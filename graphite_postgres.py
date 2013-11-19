@@ -194,6 +194,19 @@ class CheckerPostgres():
 
 def main():
 
+	from configobj import ConfigObj
+	config = ConfigObj('config.ini')
+
+
+	POSTGRES_HOST = str(config['POSTGRES_HOST'])
+	POSTGRES_DBNAME = str(config['POSTGRES_DBNAME'])
+	POSTGRES_USER = str(config['POSTGRES_USER'])
+	POSTGRES_PASSWORD = str(config['POSTGRES_PASSWORD'])
+	SEND_DELAY = int(config['SEND_DELAY'])
+	CARBON_SERVER = str(config['CARBON_SERVER'])
+	CARBON_PORT = int(config['CARBON_PORT'])
+
+
 	postgres_api = PostgresInterface(POSTGRES_HOST, POSTGRES_DBNAME, POSTGRES_USER, POSTGRES_PASSWORD)
 
 	graphite_api = Carbon(CARBON_SERVER, CARBON_PORT)

@@ -1,0 +1,4 @@
+configobj
+psycopg2
+
+
