@@ -1,5 +1,19 @@
 #!/usr/bin/python
 #
+# Script: graphite_postgres.py
+#
+# By: Samuel Maciel Sampaio [2013119] <samukasmk@gmail.com>
+#
+# Objective: monitor postgres database services (by sql querys) and report
+#            to graphite (by carbon-cache.py) without statsd or collectd stuffs
+#
+# Inspired of sources:
+# 	http://graphite.readthedocs.org/en/latest/feeding-carbon.html
+# 	https://github.com/graphite-project/graphite-web/blob/master/contrib/demo-collector.py
+# 	https://github.com/graphite-project/carbon/blob/master/examples/example-client.py
+# 	http://coreygoldberg.blogspot.com.br/2012/04/python-getting-data-into-graphite-code.html
+# 	http://wiki.postgresql.org/wiki/Using_psycopg2_with_PostgreSQL
+# 	https://gist.github.com/shawnbutts/3906915
 
 # Postgres 
 import psycopg2
