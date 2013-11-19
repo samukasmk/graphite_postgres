@@ -232,19 +232,20 @@ def main():
 			total_results = []
 
 			try: 
-				result_a = checker_postgres.check_database_size()
-				total_results = total_results + result_a
+				result_database_size = checker_postgres.check_database_size()
+				total_results = total_results + result_database_size
 			except:
-				print '[Error]: On get result_a'
+				print '[Error]: On get result_database_size'
 
-			try: 
-				#result_b = checker_postgres.check_database_size()
-				total_results = total_results + result_b
-			except:
-				print '[Error]: On get result_b'
+			# try: 
+			# 	#result_b = checker_postgres.check_database_size()
+			# 	total_results = total_results + result_b
+			# except:
+			# 	print '[Error]: On get result_b'
 
 			print total_results
-			#graphite.send_many_metrics(total_results)			
+			
+			print graphite.send_many_metrics(total_results)			
 
 			sleep(SEND_DELAY)
 
