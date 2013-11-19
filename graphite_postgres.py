@@ -23,7 +23,7 @@ try:
     import cPickle as pickle
 except:
     import pickle as pickle
-
+import struct
 from platform import node
 from socket import socket, AF_INET, SOCK_STREAM
 from sys import argv, exit, stderr
@@ -70,10 +70,10 @@ class Carbon():
 			>>> graphiteCarbon.send_metric(metric)
 		"""
 		try:
-			self.socket.sendall(metric_data + "\n")
+			self.socket.sendall(metric_string + "\n")
 		except:
 			self.connect()
-			self.socket.sendall(metric_data + "\n")
+			self.socket.sendall(metric_string + "\n")
 
 	def send_many_metrics(self, listOfMetricTuples):
 		"""
@@ -187,7 +187,15 @@ class CheckerPostgres():
 		for row in result:
 			#print "postgres.machine.%s.database_size_in_mb %s %d" % \
 			#	(str(row[1]), int(self.__bytes_to(str(row[0]), 'MB')), time())
-			database_size_list.append( ("postgres.machine.%s.database_size_in_mb" % (str(row[1])), (int(time()), int(self.__bytes_to(str(row[0]), 'MB')))))
+
+			#database_size_list.append( ("postgres.machine.%s.database_size_in_mb" % (str(row[1])), (int(time()), int(self.__bytes_to(str(row[0]), 'MB')))))
+
+			metric_path = "postgres.machine."+str(row[1])+".database_size_in_mb"
+			value = int(
+				self.__bytes_to(int(row[0]), 'MB')
+				)
+		
+			database_size_list.append(str(metric_path) +" "+ str(value) +" "+ str(int(time())))
 
 		return database_size_list
 
@@ -234,8 +242,8 @@ def main():
 			try: 
 				result_database_size = checker_postgres.check_database_size()
 				total_results = total_results + result_database_size
-			except:
-				print '[Error]: On get result_database_size'
+			except Exception, e:
+				print 'Error: On get result_database_size, '+str(e)
 
 			# try: 
 			# 	#result_b = checker_postgres.check_database_size()
@@ -243,9 +251,12 @@ def main():
 			# except:
 			# 	print '[Error]: On get result_b'
 
-			print total_results
-			
-			print graphite.send_many_metrics(total_results)			
+			#graphite_api.send_many_metrics(total_results)
+
+
+			message = '\n'.join(total_results) + '\n'
+			graphite_api.send_metric(message)
+			print message
 
 			sleep(SEND_DELAY)
 
