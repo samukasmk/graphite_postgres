@@ -43,24 +43,64 @@ CARBON_PORT = 2003
 
 
 class Carbon():
-	def __init__(self, hostname, port):
-		self.socket = socket(AF_INET, SOCK_STREAM)
+	def __init__(self, hostname, carbon_port_default=2003, carbon_port_pickle_protocol=2004):
+		self.socket_default = socket(AF_INET, SOCK_STREAM)
+		self.socket_pickle = socket(AF_INET, SOCK_STREAM)
 		self.hostname = hostname
-		self.port = int(port)
-		self.connect()
+		self.carbon_port_default = int(carbon_port_default)
+		self.carbon_port_pickle_protocol = int(carbon_port_pickle_protocol)
 
-	def connect(self):
+		self.test_connection_default()
+		self.test_connection_pickle()
+		
+
+	def connect_default(self, carbon_port):
 		try:
-			self.socket.connect((self.hostname, self.port))
+			self.socket_default.connect((self.hostname, carbon_port))
 		#except socket.error, e:
 		except IOError, e:
 			print "Couldn't connect to (%s) on port (%d), %s,\n" \
 					"Is carbon-cache.py running?" % \
-						(CARBON_SERVER, CARBON_PORT, str(e))
+						(self.hostname, carbon_port, str(e))
 			return
 
-	def disconnect(self):
-		self.socket.close()
+	def connect_pickle(self, carbon_port):
+		try:
+			self.socket_pickle.connect((self.hostname, carbon_port))
+		#except socket.error, e:
+		except IOError, e:
+			print "Couldn't connect to (%s) on port (%d), %s,\n" \
+					"Is carbon-cache.py running?" % \
+						(self.hostname, carbon_port, str(e))
+			return			
+
+	def test_connection_default(self):
+		try: 
+			self.connect_default(self.carbon_port_default)
+			self.socket_default.close()
+			self.socket_default = socket(AF_INET, SOCK_STREAM)
+
+			print "CARBON (Default) Connection to (%s) on port (%d) " \
+					"is [  OK  ]" % (self.hostname, self.carbon_port_default)			
+		except IOError, e:
+			print "Couldn't connect to (%s) on port (%d), %s,\n" \
+					"Is carbon-cache.py running?" % \
+						(self.hostname, carbon_port, str(e))
+			return	
+
+	def test_connection_pickle(self):
+		try: 
+			self.connect_pickle(self.carbon_port_pickle_protocol)
+			self.socket_pickle.close()
+			self.socket_pickle = socket(AF_INET, SOCK_STREAM)
+
+			print "CARBON (Pickle) Connection to (%s) on port (%d)  " \
+					"is [  OK  ]" % (self.hostname, self.carbon_port_pickle_protocol)
+		except IOError, e:
+			print "Couldn't connect to (%s) on port (%d), %s,\n" \
+					"Is carbon-cache.py running?" % \
+						(self.hostname, carbon_port, str(e))
+			return	
 
 	def send_metric(self, metric_string):
 		"""
@@ -70,10 +110,14 @@ class Carbon():
 			>>> graphiteCarbon.send_metric(metric)
 		"""
 		try:
-			self.socket.sendall(metric_string + "\n")
+			self.socket_default.sendall(metric_string + "\n")
 		except:
-			self.connect()
-			self.socket.sendall(metric_string + "\n")
+			try:
+				self.connect_default(carbon_port = self.carbon_port_default)
+				self.socket_default.sendall(metric_string + "\n")
+			except Exception, e:
+				print str(e)
+
 
 	def send_many_metrics(self, listOfMetricTuples):
 		"""
@@ -94,11 +138,15 @@ class Carbon():
 		message = header + payload
 
 		try:
-			self.socket.send(message + "\n")
+			self.socket_pickle.sendall(message + "\n")
 		except:
-			self.connect()
-			self.socket.send(message + "\n")
-
+			#### arrumar aqui
+			#### socket.error: [Errno 32] Broken pipe
+			try:
+				self.connect_pickle(carbon_port = self.carbon_port_pickle_protocol)
+				self.socket_pickle.sendall(message + "\n")
+			except Exception, e:
+				print str(e)
 
 
 class PostgresInterface():
@@ -185,17 +233,17 @@ class CheckerPostgres():
 
 		database_size_list = [] 
 		for row in result:
-			#print "postgres.machine.%s.database_size_in_mb %s %d" % \
-			#	(str(row[1]), int(self.__bytes_to(str(row[0]), 'MB')), time())
+			print "postgres.machine.%s.database_size_in_mb %s %d" % \
+				(str(row[1]), int(self.__bytes_to(str(row[0]), 'MB')), time())
 
-			#database_size_list.append( ("postgres.machine.%s.database_size_in_mb" % (str(row[1])), (int(time()), int(self.__bytes_to(str(row[0]), 'MB')))))
+			database_size_list.append( ("postgres.machine.%s.database_size_in_mb" % (str(row[1])), (int(time()), int(self.__bytes_to(str(row[0]), 'MB')))))
 
-			metric_path = "postgres.machine."+str(row[1])+".database_size_in_mb"
-			value = int(
-				self.__bytes_to(int(row[0]), 'MB')
-				)
+			# metric_path = "postgres.machine."+str(row[1])+".database_size_in_mb"
+			# value = int(
+			# 	self.__bytes_to(int(row[0]), 'MB')
+			# 	)
 		
-			database_size_list.append(str(metric_path) +" "+ str(value) +" "+ str(int(time())))
+			# database_size_list.append(str(metric_path) +" "+ str(value) +" "+ str(int(time())))
 
 		return database_size_list
 
@@ -212,27 +260,46 @@ def main():
 	POSTGRES_PASSWORD = str(config['POSTGRES_PASSWORD'])
 	SEND_DELAY = int(config['SEND_DELAY'])
 	CARBON_SERVER = str(config['CARBON_SERVER'])
-	CARBON_PORT = int(config['CARBON_PORT'])
+	#CARBON_PORT = int(config['CARBON_PORT'])
+	CARBON_PORT_DEFAULT = int(config['CARBON_PORT_DEFAULT'])
+	CARBON_PORT_PICKLE = int(config['CARBON_PORT_PICKLE'])
 
 
 	postgres_api = PostgresInterface(POSTGRES_HOST, POSTGRES_DBNAME, POSTGRES_USER, POSTGRES_PASSWORD)
 
-	graphite_api = Carbon(CARBON_SERVER, CARBON_PORT)
+	graphite_api = Carbon(CARBON_SERVER, CARBON_PORT_DEFAULT, CARBON_PORT_PICKLE)
 
 	checker_postgres = CheckerPostgres(postgres_api)
 
 
-	### Simple Example of send just one metric
-	# metric = 'foo.bar.baz 42 %d\n' % int(time())
-	# graphite.send_metric(metric)
+	### Simple Example of send just one metric (via string)
+	#
+	# >>> metric = 'foo.bar.baz 42 %d\n' % int(time())
+	# >>>
+	# >>> graphite.send_metric(metric)
 
-	### Example of send many metrics
-	# listOfMetricTuples = [
-	# 	('system.%s.loadavg_1min', % hostname, (timestamp, loadavgs[0])),
-	# 	('system.%s.loadavg_5min', % hostname, (timestamp, loadavgs[1])),
-	# 	('system.%s.loadavg_15min' % hostname, (timestamp, loadavgs[2]))
-	# ]
-	# graphite.send_many_metrics(listOfMetricTuples)
+	### Example of send many metrics (via pickle)
+	### [Best Soluction for multiples metric in the same time]
+	#
+	# >>> listOfMetricTuples = [
+	# ...    ('system.machine.loadavg_1min', (str(time()), '122')),
+	# ...    ('system.machine.loadavg_5min', (str(time()), '1222')),
+	# ...    ('system.machine.loadavg_15min', (str(time()), '12233'))
+	# ...    ]
+	# >>>
+	# >>> graphite_api.send_many_metrics(listOfMetricTuples)
+
+	### Example of send many metrics (via string)
+	### [No so good like pickle and serializable objects]
+	# >>> metrics_list = [ 'foo.bar.baz.A 42 12233333', 'foo.bar.baz.B 24 12233333', 'foo.bar.baz.B 8172 12233333' ]
+	# >>> metrics_string = '\n'.join(metrics_list) + '\n'
+	# >>>
+	# >>> metrics_string
+	# 'foo.bar.baz.A 42 12233333\nfoo.bar.baz.B 24 12233333\nfoo.bar.baz.B 8172 12233333\n'
+	# >>>
+	# >>> graphite_api.send_metric(metrics_string)
+
+
 
 	try:
 		while True:
@@ -245,18 +312,30 @@ def main():
 			except Exception, e:
 				print 'Error: On get result_database_size, '+str(e)
 
-			# try: 
-			# 	#result_b = checker_postgres.check_database_size()
-			# 	total_results = total_results + result_b
-			# except:
-			# 	print '[Error]: On get result_b'
+			try: 
+				#result_b = checker_postgres.check_database_size()
+				total_results = total_results + result_b
+			except:
+				print '[Error]: On get result_b'
 
-			#graphite_api.send_many_metrics(total_results)
+			graphite_api.send_many_metrics(total_results)
 
 
-			message = '\n'.join(total_results) + '\n'
-			graphite_api.send_metric(message)
-			print message
+
+			# total_results.append( ("a.b.c.pickle.AA", ('112','11112221')) )
+			# total_results.append( ("a.b.c.pickle.BB", ('112','11112221')) )
+			# total_results.append( ("a.b.c.pickle.CC", ('112','11112221')) )
+			# graphite_api.send_many_metrics(total_results)
+			# print total_results
+
+
+
+			# metrics_list = [ 'foo.bar.baz.A 42 12233333', 'foo.bar.baz.B 24 12233333', 'foo.bar.baz.B 8172 12233333' ]
+			# metrics_string = '\n'.join(metrics_list) + '\n'
+			# graphite_api.send_metric(metrics_string)
+			# print metrics_string
+
+
 
 			sleep(SEND_DELAY)
 
