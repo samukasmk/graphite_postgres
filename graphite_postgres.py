@@ -49,13 +49,14 @@ class Carbon():
 		self.hostname = hostname
 		self.carbon_port_default = int(carbon_port_default)
 		self.carbon_port_pickle_protocol = int(carbon_port_pickle_protocol)
-
+		#
+		# Test connections
 		self.test_connection_default()
 		self.test_connection_pickle()
-		
 
 	def connect_default(self, carbon_port):
 		try:
+			self.socket_default = socket(AF_INET, SOCK_STREAM)
 			self.socket_default.connect((self.hostname, carbon_port))
 		#except socket.error, e:
 		except IOError, e:
@@ -64,8 +65,22 @@ class Carbon():
 						(self.hostname, carbon_port, str(e))
 			return
 
+	def disconnect_all(self):
+		print "Disconnecting all sockets..."
+		try:
+			self.socket_default.close()
+			print '\r...OK'
+		except:
+			print 'Error: on disconnect socket (carbon default)'
+		try:
+			self.socket_pickle.close()
+			print '\r...OK'
+		except:
+			print 'Error: on disconnect socket (carbon pickle)'
+
 	def connect_pickle(self, carbon_port):
 		try:
+			self.socket_pickle = socket(AF_INET, SOCK_STREAM)
 			self.socket_pickle.connect((self.hostname, carbon_port))
 		#except socket.error, e:
 		except IOError, e:
@@ -78,8 +93,6 @@ class Carbon():
 		try: 
 			self.connect_default(self.carbon_port_default)
 			self.socket_default.close()
-			self.socket_default = socket(AF_INET, SOCK_STREAM)
-
 			print "CARBON (Default) Connection to (%s) on port (%d) " \
 					"is [  OK  ]" % (self.hostname, self.carbon_port_default)			
 		except IOError, e:
@@ -92,8 +105,6 @@ class Carbon():
 		try: 
 			self.connect_pickle(self.carbon_port_pickle_protocol)
 			self.socket_pickle.close()
-			self.socket_pickle = socket(AF_INET, SOCK_STREAM)
-
 			print "CARBON (Pickle) Connection to (%s) on port (%d)  " \
 					"is [  OK  ]" % (self.hostname, self.carbon_port_pickle_protocol)
 		except IOError, e:
@@ -132,7 +143,6 @@ class Carbon():
 
 			>>> graphite.send_many_metrics(listOfMetricTuples)
 		"""
-
 		payload = pickle.dumps(listOfMetricTuples)
 		header = struct.pack("!L", len(payload))
 		message = header + payload
@@ -320,27 +330,22 @@ def main():
 
 			graphite_api.send_many_metrics(total_results)
 
-
-
 			# total_results.append( ("a.b.c.pickle.AA", ('112','11112221')) )
 			# total_results.append( ("a.b.c.pickle.BB", ('112','11112221')) )
 			# total_results.append( ("a.b.c.pickle.CC", ('112','11112221')) )
 			# graphite_api.send_many_metrics(total_results)
 			# print total_results
 
-
-
 			# metrics_list = [ 'foo.bar.baz.A 42 12233333', 'foo.bar.baz.B 24 12233333', 'foo.bar.baz.B 8172 12233333' ]
 			# metrics_string = '\n'.join(metrics_list) + '\n'
 			# graphite_api.send_metric(metrics_string)
 			# print metrics_string
 
-
-
 			sleep(SEND_DELAY)
 
 	except KeyboardInterrupt:
-		stderr.write("\nExiting on CTRL-c\n")
+		stderr.write("\n\nExiting on CTRL-c\n")
+		graphite_api.disconnect_all()
 		exit(0)
 
 
