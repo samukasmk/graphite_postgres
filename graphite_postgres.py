@@ -29,16 +29,18 @@ from socket import socket, AF_INET, SOCK_STREAM
 from sys import argv, exit, stderr
 from time import sleep, time
 
-
-
-POSTGRES_HOST='192.168.5.210'
-POSTGRES_DBNAME='postgres'
-POSTGRES_USER='postgres'
-POSTGRES_PASSWORD='db_pass_here'
-
-SEND_DELAY = 60
-CARBON_SERVER = 'localhost'
-CARBON_PORT = 2003
+### Please before running these app, create the (config.ini) file
+### with these parameters:
+#
+# POSTGRES_HOST='192.168.5.210'
+# POSTGRES_DBNAME='postgres'
+# POSTGRES_USER='postgres'
+# POSTGRES_PASSWORD='db_pass_here'
+#
+# SEND_DELAY = 60
+# CARBON_SERVER = 'localhost'
+# CARBON_PORT_DEFAULT = 2003
+# CARBON_PORT_PICKLE = 2004
 
 
 
